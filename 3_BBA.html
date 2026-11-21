@@ -151,7 +151,10 @@ function getLearnedIds(){
   try{const a=JSON.parse(read(STORAGE_KEY));return Array.isArray(a)?a:[]}catch(e){return []}
 }
 function getBookmarkIds(){
-  try{const a=JSON.parse(read(BOOKMARK_KEY));return Array.isArray(a)?a:[]}catch(e){return []}
+  try{const a=JSON.parse(read(BOOKMARK_KEY));return Array.isArray(a)?a.filter(id=>typeof id==='string'&&id.startsWith('question:')):[]}catch(e){return []}
+}
+function getBookmarkKey(q){
+  return 'question:'+JSON.stringify([q.case||'',q.question,q.options,q.correctAnswerIndex]);
 }
 function saveLearnedId(id){
   const ids=getLearnedIds();
@@ -168,7 +171,8 @@ function updateStats(){
   $('total-available').textContent=myQuestions.length;
   $('learned-count').textContent=learned;
   $('unlearned-count').textContent=Math.max(0,myQuestions.length-learned);
-  const bookmarked=getBookmarkIds().filter(id=>valid.has(id)).length;
+  const savedBookmarks=new Set(getBookmarkIds());
+  const bookmarked=myQuestions.filter(q=>savedBookmarks.has(getBookmarkKey(q))).length;
   $('bookmark-count').textContent=bookmarked;
   $('bookmarks-btn').disabled=!bookmarked;
   const st=$('load-status');
@@ -234,8 +238,8 @@ function startReviewSession(){
 }
 
 function startBookmarkSession(){
-  const ids=getBookmarkIds();
-  const bookmarked=myQuestions.filter(q=>ids.includes(q.id));
+  const ids=new Set(getBookmarkIds());
+  const bookmarked=myQuestions.filter(q=>ids.has(getBookmarkKey(q)));
   if(!bookmarked.length)return;
   currentMode='bookmarks';initQueue(bookmarked);
 }
@@ -243,8 +247,9 @@ function startBookmarkSession(){
 function toggleBookmark(){
   if(!activeQuestion)return;
   const ids=getBookmarkIds();
-  const index=ids.indexOf(activeQuestion.id);
-  if(index>=0)ids.splice(index,1);else ids.push(activeQuestion.id);
+  const key=getBookmarkKey(activeQuestion);
+  const index=ids.indexOf(key);
+  if(index>=0)ids.splice(index,1);else ids.push(key);
   store(BOOKMARK_KEY,JSON.stringify(ids));
   updateStats();
   updateBookmarkButton();
@@ -253,7 +258,7 @@ function toggleBookmark(){
 function updateBookmarkButton(){
   const btn=$('bookmark-current-btn');
   if(!activeQuestion)return;
-  const saved=getBookmarkIds().includes(activeQuestion.id);
+  const saved=getBookmarkIds().includes(getBookmarkKey(activeQuestion));
   btn.textContent=saved?'🔖 បានរក្សាទុករួចហើយ — ចុចដើម្បីដកចេញ':'🔖 រក្សាទុកសម្រាប់រំលឹក';
 }
 
